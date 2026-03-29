@@ -1,13 +1,13 @@
+import asyncio
 import os
 import discord
-from discord import app_commands
 from discord.ext import commands
 
 from .ai_client import AIClient, MODEL
 from .memory import ConversationMemory
+from .transcribe import transcribe_audio
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
-# Optional: restrict bot to a specific guild ID (faster slash command sync)
 GUILD_ID = os.getenv("DISCORD_GUILD_ID")
 
 intents = discord.Intents.default()
@@ -40,16 +40,32 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    print(f"   MSG from {message.author} | content={message.content[:60]!r}")
-
-    # Respond to all non-bot messages; strip @mention if present
-    content = message.content.replace(f"<@{bot.user.id}>", "").strip()
-    if not content:
-        await message.channel.send("👋 Yes? Just ask away.")
-        return
-
+    is_dm = isinstance(message.channel, discord.DMChannel)
     conv_id = f"dm_{message.author.id}" if is_dm else str(message.channel.id)
 
+    # ── Audio message (Discord voice note) ────────────────────────────────────
+    audio = next(
+        (a for a in message.attachments if a.content_type and a.content_type.startswith("audio/")),
+        None,
+    )
+    if audio:
+        print(f"   AUDIO from {message.author} | {audio.filename} ({audio.size} bytes)")
+        async with message.channel.typing():
+            try:
+                content = await transcribe_audio(audio)
+                print(f"   Transcribed: {content[:80]!r}")
+                await message.channel.send(f"🎙️ *{content}*")
+            except Exception as e:
+                await message.channel.send(f"⚠️ Could not transcribe audio: {e}")
+                return
+    else:
+        # ── Text message ───────────────────────────────────────────────────────
+        content = message.content.replace(f"<@{bot.user.id}>", "").strip()
+        print(f"   MSG from {message.author} | {content[:60]!r}")
+        if not content:
+            return
+
+    # ── Send to AI ─────────────────────────────────────────────────────────────
     async with message.channel.typing():
         memory.add(conv_id, "user", content)
         try:
@@ -73,10 +89,11 @@ async def clear_cmd(interaction: discord.Interaction):
 
 @bot.tree.command(name="status", description="Show OpenClaw status")
 async def status_cmd(interaction: discord.Interaction):
+    conv_id = str(interaction.channel_id)
     await interaction.response.send_message(
         f"✅ **OpenClaw** is running\n"
         f"Model: `{MODEL}`\n"
-        f"History: `{len(memory.get(str(interaction.channel_id)))}` messages in this channel",
+        f"History: `{len(memory.get(conv_id))}` messages in this channel",
         ephemeral=True,
     )
 
@@ -84,7 +101,6 @@ async def status_cmd(interaction: discord.Interaction):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _split(text: str, limit: int = 1990) -> list[str]:
-    """Split text into Discord-safe chunks (max 2000 chars)."""
     if len(text) <= limit:
         return [text]
     chunks = []
