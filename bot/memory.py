@@ -3,7 +3,7 @@ import os
 from collections import deque
 from pathlib import Path
 
-DATA_DIR = Path(os.getenv("DATA_DIR", "/data"))
+DATA_DIR = Path(os.getenv("DATA_DIR", "./data"))
 MAX_MESSAGES = int(os.getenv("MAX_MESSAGES_PER_CONV", "40"))
 
 
