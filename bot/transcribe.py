@@ -16,8 +16,12 @@ async def transcribe_audio(attachment: discord.Attachment) -> str:
 
 
 def _sync_transcribe(audio_bytes: bytes, filename: str) -> str:
+    # No language specified — Whisper auto-detects NL, EN, FR, etc.
     result = _client.audio.transcriptions.create(
         file=(filename, audio_bytes),
         model=WHISPER_MODEL,
+        response_format="verbose_json",  # includes detected language
     )
+    lang = getattr(result, "language", "?")
+    print(f"   Whisper detected language: {lang}")
     return result.text
