@@ -1,13 +1,10 @@
 import asyncio
 import os
 from groq import Groq
+from .persona import load_soul, load_agent
 
 MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1024"))
-SYSTEM_PROMPT = os.getenv(
-    "SYSTEM_PROMPT",
-    "You are Claw, a helpful and concise AI assistant. Keep replies short unless asked to elaborate.",
-)
 
 
 class AIClient:
@@ -19,9 +16,14 @@ class AIClient:
         return await loop.run_in_executor(None, self._sync_chat, messages)
 
     def _sync_chat(self, messages: list[dict]) -> str:
+        # Reload SOUL.md and AGENT.md on every call — edits take effect immediately
+        soul = load_soul()
+        agent = load_agent()
+        system = f"{soul}\n\n{agent}".strip() if agent else soul
+
         resp = self._client.chat.completions.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
+            messages=[{"role": "system", "content": system}] + messages,
         )
         return resp.choices[0].message.content

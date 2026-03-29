@@ -8,6 +8,7 @@ from .ai_client import AIClient, MODEL
 from .memory import ConversationMemory
 from .storage import Storage
 from .transcribe import transcribe_audio
+from .persona import append_to_agent
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
 GUILD_ID = os.getenv("DISCORD_GUILD_ID")
@@ -116,6 +117,15 @@ async def search_cmd(interaction: discord.Interaction, query: str):
         tag = "📝" if r["type"] == "note" else ("🧑" if r["type"] == "user" else "🤖")
         lines.append(f"{tag} `{r['ts'][:16]}` — {r['body'][:120]}")
     await interaction.followup.send("\n".join(lines), ephemeral=True)
+
+
+@bot.tree.command(name="learn", description="Teach Claw something new about you — saved to AGENT.md permanently")
+@app_commands.describe(fact="What Claw should remember about you")
+async def learn_cmd(interaction: discord.Interaction, fact: str):
+    import asyncio
+    loop = asyncio.get_event_loop()
+    await loop.run_in_executor(None, append_to_agent, fact)
+    await interaction.response.send_message(f"🧠 Got it, added to my knowledge:\n> {fact}", ephemeral=True)
 
 
 @bot.tree.command(name="clear", description="Clear conversation history for this channel")
