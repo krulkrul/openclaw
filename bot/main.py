@@ -40,19 +40,10 @@ async def on_message(message: discord.Message):
     if message.author.bot:
         return
 
-    is_dm = isinstance(message.channel, discord.DMChannel)
-    is_mentioned = bot.user in message.mentions
-    has_prefix = message.content.startswith("!")
-    print(f"   MSG from {message.author} | dm={is_dm} mentioned={is_mentioned} prefix={has_prefix} | content={message.content[:60]!r}")
+    print(f"   MSG from {message.author} | content={message.content[:60]!r}")
 
-    if not (is_dm or is_mentioned or has_prefix):
-        return
-
-    # Strip @mention or ! prefix
-    content = message.content.replace(f"<@{bot.user.id}>", "")
-    if content.startswith("!"):
-        content = content[1:]
-    content = content.strip()
+    # Respond to all non-bot messages; strip @mention if present
+    content = message.content.replace(f"<@{bot.user.id}>", "").strip()
     if not content:
         await message.channel.send("👋 Yes? Just ask away.")
         return
