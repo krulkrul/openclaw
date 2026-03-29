@@ -3,7 +3,7 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 
-from .claude_client import ClaudeClient, MODEL
+from .ai_client import AIClient, MODEL
 from .memory import ConversationMemory
 
 DISCORD_TOKEN = os.environ["DISCORD_TOKEN"]
@@ -14,7 +14,7 @@ intents = discord.Intents.default()
 intents.message_content = True
 
 bot = commands.Bot(command_prefix="!", intents=intents)
-claude = ClaudeClient()
+ai = AIClient()
 memory = ConversationMemory()
 
 
@@ -53,10 +53,10 @@ async def on_message(message: discord.Message):
     async with message.channel.typing():
         memory.add(conv_id, "user", content)
         try:
-            response = await claude.chat(memory.get(conv_id))
+            response = await ai.chat(memory.get(conv_id))
             memory.add(conv_id, "assistant", response)
         except Exception as e:
-            response = f"⚠️ Error talking to Claude: {e}"
+            response = f"⚠️ Error: {e}"
 
     for chunk in _split(response):
         await message.channel.send(chunk)

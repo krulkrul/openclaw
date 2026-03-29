@@ -1,8 +1,8 @@
 import asyncio
 import os
-import anthropic
+from groq import Groq
 
-MODEL = os.getenv("CLAUDE_MODEL", "claude-sonnet-4-5")
+MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 MAX_TOKENS = int(os.getenv("MAX_TOKENS", "1024"))
 SYSTEM_PROMPT = os.getenv(
     "SYSTEM_PROMPT",
@@ -10,19 +10,18 @@ SYSTEM_PROMPT = os.getenv(
 )
 
 
-class ClaudeClient:
+class AIClient:
     def __init__(self):
-        self._client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+        self._client = Groq(api_key=os.environ["GROQ_API_KEY"])
 
     async def chat(self, messages: list[dict]) -> str:
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._sync_chat, messages)
 
     def _sync_chat(self, messages: list[dict]) -> str:
-        resp = self._client.messages.create(
+        resp = self._client.chat.completions.create(
             model=MODEL,
             max_tokens=MAX_TOKENS,
-            system=SYSTEM_PROMPT,
-            messages=messages,
+            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + messages,
         )
-        return resp.content[0].text
+        return resp.choices[0].message.content
