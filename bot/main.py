@@ -22,13 +22,17 @@ memory = ConversationMemory()
 
 @bot.event
 async def on_ready():
-    guild = discord.Object(id=int(GUILD_ID)) if GUILD_ID else None
-    if guild:
-        bot.tree.copy_global_to(guild=guild)
-        await bot.tree.sync(guild=guild)
-    else:
-        await bot.tree.sync()
     print(f"✅ OpenClaw online as {bot.user}  |  model: {MODEL}")
+    guild = discord.Object(id=int(GUILD_ID)) if GUILD_ID else None
+    try:
+        if guild:
+            bot.tree.copy_global_to(guild=guild)
+            synced = await bot.tree.sync(guild=guild)
+        else:
+            synced = await bot.tree.sync()
+        print(f"   Synced {len(synced)} slash command(s)")
+    except Exception as e:
+        print(f"   Slash command sync failed: {e}")
 
 
 @bot.event
@@ -38,6 +42,7 @@ async def on_message(message: discord.Message):
 
     is_dm = isinstance(message.channel, discord.DMChannel)
     is_mentioned = bot.user in message.mentions
+    print(f"   MSG from {message.author} | dm={is_dm} mentioned={is_mentioned} | content={message.content[:60]!r}")
 
     if not (is_dm or is_mentioned):
         return
